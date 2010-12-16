@@ -1,17 +1,17 @@
 % -*- Mode: Prolog -*-
 /** @info @copyright
   
-  Copyright (C) 2004 by Salvador Fandiño (sfandino@@yahoo.com)
+  Copyright (C) 2004, 2010 by Salvador Fandiño (sfandino@@yahoo.com)
 
-  PrologDoc is free software; you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation; either version 2 of the License, or
-  (at your option) any later version.
+  This prolog module is free software; you can redistribute it and/or
+  modify it under the terms of the GNU General Public License as
+  published by the Free Software Foundation; either version 2 of the
+  License, or (at your option) any later version.
 
-  PrologDoc is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
+  This prolog module is distributed in the hope that it will be
+  useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+  of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with PrologDoc; if not, write to the Free Software
@@ -34,6 +34,9 @@
 		 avl_has/2,
 		 sorted_list_to_avl/2,
 		 list_to_avl/2,
+                 avl_merge/3,
+                 avl_small_merge/3,
+                 avl_merge_list/3,
 		 avl_gen/3,
 		 avl_dump/1]).
 
@@ -300,3 +303,45 @@ avl_dump(t(K, V, L, R, D), S) :-
 	atom_concat(S, '    ', SR),
 	avl_dump(R, SR).
 
+avl_merge(T1, T2, TO) :-
+        avl_to_list(T1, L1),
+        avl_to_list(T2, L2),
+        merge_sorted_lists(L1, L2, LO),
+        sorted_list_to_avl(LO, TO).
+
+merge_sorted_lists(L1, L2, LO) :-
+        (   L1 = []
+        ->  L2 = LO
+        ;   (   L2 = []
+            ->  LO = L1
+            ;   merge_sorted_lists1(L1, L2, LO))).
+
+merge_sorted_lists1(L1, L2, LO) :-
+        L1 = [H1|T1],
+        L2 = [H2|T2],
+        H1 = K1-_,
+        H2 = K2-_,
+        (   K1 @< K2
+        ->  LO = [H1|LO1],
+            (   T1 = []
+            ->  LO1 = L2
+            ;   merge_sorted_lists1(T1, L2, LO1))
+        ;   LO = [H2|LO1],
+            (   K1 @> K2
+            ->  (   T2 = []
+                ->  LO1 = L1
+                ;   merge_sorted_lists1(L1, T2, LO1))
+            ;   merge_sorted_lists(T1, T2, LO1))).
+
+avl_merge_list(T, L, T1) :-
+        avl_merge_list1(L, T, T1).
+
+avl_merge_list1([], T, T).
+avl_merge_list1([K-V|L], T, T1) :-
+        avl_replace(T, K, V, T2),
+        avl_merge_list1(L, T2, T1).
+
+avl_small_merge(T1, T2, TO) :-
+        avl_to_list(T2, L),
+        avl_merge_list1(L, T1, TO).
+        
