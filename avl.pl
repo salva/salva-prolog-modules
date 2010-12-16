@@ -26,14 +26,25 @@
 
 :- module(avl, [ avl_empty/1,
 		 avl_to_list/2,
+                 avl_keys/2,
+                 avl_values/2,
 		 avl_put/4,
 		 avl_put/3,
 		 avl_replace/4,
 		 avl_replace/3,
 		 avl_get/3,
 		 avl_has/2,
+                 avl_delete_first/2,
+                 avl_delete_first/4,
+                 avl_delete_last/2,
+                 avl_delete_last/4,
+                 avl_delete/3,
+                 avl_delete/4,
+                 avl_delete_list/3,
+                 avl_delete_list/4,
 		 sorted_list_to_avl/2,
 		 list_to_avl/2,
+                 keys_to_avl/2,
                  avl_merge/3,
                  avl_small_merge/3,
                  avl_merge_list/3,
@@ -86,6 +97,22 @@ avl_to_list(t, L, L).
 avl_to_list(t(K, V, L, R, _), List, Rest) :-
 	avl_to_list(L, List, [K-V|M]),
 	avl_to_list(R, M, Rest).
+
+avl_keys(T, L) :-
+        avl_keys(T, L, []).
+avl_keys(t, L, L).
+avl_keys(t(K, _, L, R, _), List, Rest) :-
+        avl_keys(L, List, [K|M]),
+        avl_keys(R, M, Rest).
+
+avl_values(T, L) :-
+        avl_values(T, L, []).
+avl_values(t, L, L).
+avl_values(t(_, V, L, R, _), List, Rest) :-
+        avl_values(L, List, [V|M]),
+        avl_values(R, M, Rest).
+
+
 
 /**
   @pred avl_put(+Tree, +Key, -Out)
@@ -168,6 +195,9 @@ avl_replace(>, NK, NV, L, R, D, K, V, T) :-
 	->  avl_balance_right(NK, NV, L, R1, T)
 	;   T = t(NK, NV, L, R1, D) ).
 
+avl_depth(t, 0).
+avl_depth(t(_,_,_,_,D), D).
+
 avl_cmp_depth(t, D, D).
 avl_cmp_depth(t(_,_,_,_,AD), BD, D) :-
 	D is BD - AD.
@@ -193,6 +223,94 @@ avl_balance_right(NK, NV, L, t(RK, RV, RL, RR, RD), T) :-
 		T = t(RK, RV, t(NK, NV, L, RL, ND1), RR, RD) )
 	;   D1 is RD + 1,
 	    T = t(NK, NV, L, t(RK, RV, RL, RR, RD), D1) ).
+
+
+avl_delete_first(T, T1) :-
+        avl_delete_first(T, T1, _, _).
+
+avl_delete_first(t(K, V, L, R, _), T1, K1, V1) :-
+        avl_delete_first(L, R, K, V, T1, K1, V1).
+
+avl_delete_first(t, R, K, V, R, K, V).
+avl_delete_first(t(LK, LV, LL, LR, _), R, K, V, T1, K1, V1) :-
+        (   R = t(_,_,_,_, RD)
+        ->  avl_delete_first(LL, LR, LK, LV, LT1, K1, V1),
+            avl_cmp_depth(LT1, RD, Diff),
+            (   Diff = 2
+            ->  avl_balance_right(K, V, LT1, R, T1)
+            ;   D1 is 1 + max(RD, RD - Diff),
+                T1 = t(K, V, LT1, R, D1) )
+        ;   K1 = LK,
+            V1 = LV,
+            T1 = t(K, V, t, t, 1)).
+
+avl_delete_last(T, T1) :-
+        avl_delete_last(T, T1, _, _).
+
+avl_delete_last(t(K, V, L, R, _), T1, K1, V1) :-
+        avl_delete_last(R, L, K, V, T1, K1, V1).
+
+avl_delete_last(t, L, K, V, L, K, V).
+avl_delete_last(t(RK, RV, RL, RR, _), L, K, V, T1, K1, V1) :-
+        (   L = t(_,_,_,_, LD)
+        ->  avl_delete_last(RR, RL, RK, RV, RT1, K1, V1),
+            avl_cmp_depth(RT1, LD, Diff),
+            (   Diff = 2
+            ->  avl_balance_left(K, V, L, RT1, T1)
+            ;   D1 is 1 + max(LD, LD - Diff),
+                T1 = t(K, V, L, RT1, D1) )
+        ;   K1 = RK,
+            V1 = RV,
+            T1 = t(K, V, t, t, 1)).
+
+avl_delete(T, K, T1) :-
+        avl_delete(T, K, T1, _).
+
+avl_delete(t(NK, NV, L, R, _), K, T1, V1) :-
+        compare(O, K, NK),
+        avl_delete(O, K, NK, NV, L, R, T1, V1).
+
+avl_delete(=, _, _, NV, L, R, T1, NV) :-
+        avl_depth(L, LD),
+        (   (   avl_cmp_depth(R, LD, 1),
+                avl_delete_last(L, L1, DK, DV)
+            ->  R1 = R
+            ;   avl_delete_first(R, R1, DK, DV),
+                L1 = L )
+        ->  avl_depth(L1, L1D),
+            avl_depth(R1, R1D),
+            T1D is 1 + max(L1D, R1D),
+            T1 = t(DK, DV, L1, R1, T1D)
+        ;   T1 = t ).
+
+avl_delete(<, K, NK, NV, L, R, T1, V1) :-
+        avl_delete(L, K, L1, V1),
+        avl_depth(R, RD),
+        avl_cmp_depth(L1, RD, Diff),
+        (   Diff = 2
+        ->  avl_balance_right(NK, NV, L1, R, T1)
+        ;   T1D is max(RD, RD - Diff),
+            T1 = t(NK, NV, L1, R, T1D)).
+
+avl_delete(>, K, NK, NV, L, R, T1, V1) :-
+        avl_delete(R, K, R1, V1),
+        avl_depth(L, LD),
+        avl_cmp_depth(R1, LD, Diff),
+        (   Diff = 2
+        ->  avl_balance_left(NK, NV, L, R1, T1)
+        ;   T1D is max(LD, LD - Diff),
+            T1 = t(NK, NV, L, R1, T1D)).
+
+avl_delete_list(T, L, T1) :-
+        avl_delete_list1(L, T, T1, _).
+avl_delete_list(T, L, T1, V1) :-
+        avl_delete_list1(L, T, T1, V1).
+
+avl_delete_list1([], T, T, []).
+avl_delete_list1([K|L], T, T1, [V|VL]) :-
+        avl_delete(T, K, T2, V),
+        avl_delete_list1(L, T2, T1, VL). 
+
 
 /**
   @pred avl_has(+Tree, +Key)
@@ -241,6 +359,14 @@ list_to_avl([K-V|L], T, O) :-
 	avl_replace(T, K, V, T1),
 	list_to_avl(L, T1, O).
 
+keys_to_avl(L, O) :-
+	keys_to_avl(L, t, O).
+
+keys_to_avl([], O, O).
+keys_to_avl([K|L], T, O) :-
+	avl_replace(T, K, [], T1),
+	keys_to_avl(L, T1, O).
+
 /**
   @pred sorted_list_to_avl(+List, -Tree)
     @arg List=[K1-V1, K2-V2, ...]
@@ -269,6 +395,8 @@ sorted_list_to_avl(N, List, Rest, D, t(K, V, L, R, D)) :-
 	D is D1+1,
 	Z is N-1-A,
 	sorted_list_to_avl(Z, More, Rest, _, R).
+
+
 
 /**
   @pred avl_gen(+Tree, ?Key, ?Value)
