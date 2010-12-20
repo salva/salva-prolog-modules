@@ -1,37 +1,37 @@
 % -*- Mode: Prolog -*-
-/** @info @copyright
+/** <module> AVL tree library
   
-  Copyright (C) 2004, 2010 by Salvador Fandi�o (sfandino@@yahoo.com)
+  Copyright (C) 2004-2010 by Salvador Fandiño
 
-  This prolog module is free software; you can redistribute it and/or
-  modify it under the terms of the GNU General Public License as
-  published by the Free Software Foundation; either version 2 of the
-  License, or (at your option) any later version.
+  This library is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 2 of the License, or
+  (at your option) any later version.
 
-  This prolog module is distributed in the hope that it will be
-  useful, but WITHOUT ANY WARRANTY; without even the implied warranty
-  of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  This library is distributed in the hope that it will be useful, but
+  WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
   General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with PrologDoc; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-  @author(format=svn) $Author: salva $
-  @version(format=svn) $Revision: 1.9 $
-  @date(format=svn) $Date: 2005-03-20 16:07:24 +0100 (Sun, 20 Mar 2005) $
-  @source(format=svn) $URL: file:///tmp/crunc/trunk/prolog/avl/avl.pl $
+  @author Salvador Fandiño <sfandino@yahoo.com>
+  @license GPL
 
-  */
+*/
 
 :- module(avl, [ avl_empty/1,
-		 avl_to_list/2,
+                 avl_to_list/2,
                  avl_keys/2,
                  avl_values/2,
-		 avl_put/4,
+                 avl_depth/2,
+                 avl_put/4,
 		 avl_put/3,
 		 avl_replace/4,
 		 avl_replace/3,
+                 avl_replace_list/3,
 		 avl_get/3,
 		 avl_has/2,
                  avl_iterator/2,
@@ -45,54 +45,28 @@
                  avl_delete/4,
                  avl_delete_list/3,
                  avl_delete_list/4,
-		 sorted_list_to_avl/2,
+		 ordered_list_to_avl/2,
 		 list_to_avl/2,
                  keys_to_avl/2,
                  avl_merge/3,
                  avl_small_merge/3,
-                 avl_merge_list/3,
-		 avl_gen/3,
-		 avl_dump/1]).
+                 avl_gen/3,
+                 avl_dump/1]).
+  
+%%  avl_empty(-Tree:avl) is det.
+%
+%  Creates an empty AVL tree.
 
-/**
-  @s1 Introduction
-
-  This module exports a set of predicates to manipulate AVL trees from Prolog.
-
-    @s2 AVL tree representation
-
-    Empty trees are represented as @c|t|.
-
-    Non empty tree nodes are represented as
-      @c|avl(Key, Value, Left, Right, Depth)| where
-
-    @list
-      @li Key and Value
-          are the key/value pair stored on this node.
-      @li Left and Right
-          are this node child subtrees.
-      @li Depth
-          is a value used internally to calculate when
-          the tree needs to be balanced after an insertion.
-    @/list
-*/
-
-
-/**
-  @pred avl_empty(?Tree)
-    creates an empty AVL tree.
-  */
 avl_empty(t).
 
-/**
-  @pred avl_to_list(+Tree, ?List)
-    @arg Tree
-        input AVL tree.
-    @arg List=[K1-V1, K2-V2, ...]
-        output sorted list.
 
-    @desc converts an AVL tree to a sorted list with the @c|Key-Value| pairs.
-  */
+%% avl_to_list(+Tree:avl, -List:list_of_pairs) is det.
+%
+%  Converts an AVL tree to a sorted list.
+%
+%   @param Tree AVL tree
+%   @param List ordered list with value-key pairs [K1-V1, K2-V2, ...].
+
 avl_to_list(T, L) :-
 	avl_to_list(T, L, []).
 
@@ -101,12 +75,21 @@ avl_to_list(avl(K, V, L, R, _), List, Rest) :-
 	avl_to_list(L, List, [K-V|M]),
 	avl_to_list(R, M, Rest).
 
+
+%% avl_keys(+Tree:avl, -Keys:list) is det.
+%
+% Returns a list with the keys on the tree.
+
 avl_keys(T, L) :-
         avl_keys(T, L, []).
 avl_keys(t, L, L).
 avl_keys(avl(K, _, L, R, _), List, Rest) :-
         avl_keys(L, List, [K|M]),
         avl_keys(R, M, Rest).
+
+
+%% avl_values(+Tree:avl, -Values:avl) is det.
+% Returns a list with the values on the tree.
 
 avl_values(T, L) :-
         avl_values(T, L, []).
@@ -116,32 +99,27 @@ avl_values(avl(_, V, L, R, _), List, Rest) :-
         avl_values(R, M, Rest).
 
 
-
-/**
-  @pred avl_put(+Tree, +Key, -Out)
-  equivalent to @c|avl_put(Tree, Key, [], Out)|. See also @rp|avl_put/4|.
-  */
+%% avl_put(+Tree:avl, +Key, -Out:avl) is semidet.
+% Equivalent to avl_put(Tree, Key, [], Out).
 
 avl_put(T, K, T1) :-
-	avl_put(T, K, [], T1).
+        avl_put(T, K, [], T1).
 
 
-/**
-  @pred avl_put(+Tree, +Key, +Value, -Out)
-    @arg Tree
-        input AVL tree.
-    @arg Key, Value
-        pair to insert on the AVL tree
-    @arg Out
-        output tree.
+%% avl_put(+Tree:avl, +Key:ground_term, +Value, -Out:avl) is semidet.
+%
+% Inserts the pair Key-Value into the tree.
+%
+% Fails when the tree already contains an element with the given key.
 
-  @desc inserts a @c|Key/Value| pair on an AVL tree. Fails if an
-        element with the same @c|Key| already exists on the tree
-        (see also @rp|avl_replace/4|).
+avl_put(T, K, V, T1) :-
+        (   ground(K)
+        ->  avl_put_unsafe(T, K, V, T1)
+        ;   instantation_error(K)).
 
-  */
-avl_put(t, K, V, avl(K, V, t, t, 1)) :- !.
-avl_put(avl(NK, NV, L, R, D), K, V, T) :-
+avl_put_unsafe(t, K, V, avl(K, V, t, t, 1)).
+
+avl_put_unsafe(avl(NK, NV, L, R, D), K, V, T) :-
 	compare(O, K, NK),
 	avl_put(O, NK, NV, L, R, D, K, V, T).
 
@@ -157,31 +135,26 @@ avl_put(>, NK, NV, L, R, D, K, V, T) :-
 	->  avl_balance_right(NK, NV, L, R1, T)
 	;   T = avl(NK, NV, L, R1, D) ).
 
-/**
-  @pred avl_replace(+Tree, +Key, -Out)
-    equivalent to @c|avl_replace(Tree, Key, [], Out)|.
-    See also @rp|avl_replace/4|.
-  */
+
+%% avl_replace(+Tree:avl, +Key, -Out:avl) is det.
+% Equivalent to avl_replace(Tree, Key, [], Out).
 
 avl_replace(T, K, T1) :-
 	avl_replace(T, K, [], T1).
 
-/**
-  @pred avl_replace(+Tree, +Key, +Value, -Out)
-    @arg Tree
-        input AVL tree.
-    @arg Key, Value
-        pair to insert on the AVL tree
-    @arg Out
-        output tree.
 
-    @desc inserts a @c|Key/Value| pair on an AVL tree. If an
-        element with the same @c|Key| already exists on the tree
-        it is replaced (see also @rp|avl_put/4|).
-  */
+%% avl_replace(+Tree:avl, +Key, +Value, -Out:avl) is det.
+% Inserts the pair Key-Value into the tree.
+%
+% Replaces any previous entry with the given key.
 
-avl_replace(t, K, V, avl(K, V, t, t, 1)) :- !.
-avl_replace(avl(NK, NV, L, R, D), K, V, T) :-
+avl_replace(T, K, V, T1) :-
+        (   ground(K)
+        ->  avl_replace_unsafe(T, K, V, T1)
+        ;   instantation_error(K)).
+
+avl_replace_unsafe(t, K, V, avl(K, V, t, t, 1)).
+avl_replace_unsafe(avl(NK, NV, L, R, D), K, V, T) :-
 	compare(O, K, NK),
 	avl_replace(O, NK, NV, L, R, D, K, V, T).
 
@@ -198,8 +171,26 @@ avl_replace(>, NK, NV, L, R, D, K, V, T) :-
 	->  avl_balance_right(NK, NV, L, R1, T)
 	;   T = avl(NK, NV, L, R1, D) ).
 
+
+%% avl_replace_list(+Tree:avl, +List:list, -Out:avl) is det.
+% Inserts the elements in the given list into the tree replacing
+% previous entries if necessary.
+
+avl_replace_list(T, L, T1) :-
+        avl_replace_list1(L, T, T1).
+
+avl_replace_list1([], T, T).
+avl_replace_list1([K-V|L], T, T1) :-
+        avl_replace(T, K, V, T2),
+        avl_replace_list1(L, T2, T1).
+
+
+%% avl_depth(+Tree:avl, -Depth:int) is det.
+% Returns the tree depth.
+
 avl_depth(t, 0).
 avl_depth(avl(_,_,_,_,D), D).
+
 
 avl_cmp_depth(t, D, D).
 avl_cmp_depth(avl(_,_,_,_,AD), BD, D) :-
@@ -228,8 +219,16 @@ avl_balance_right(NK, NV, L, avl(RK, RV, RL, RR, RD), T) :-
 	    T = avl(NK, NV, L, avl(RK, RV, RL, RR, RD), D1) ).
 
 
+%% avl_delete_first(+Tree:avl, -Out:avl) is semidet.
+% Deletes the first element on the tree.
+% Fails is the tree is empty.
+
 avl_delete_first(T, T1) :-
         avl_delete_firsy(T, T1, _, _).
+
+%% avl_delete_first(+Tree:avl, -Out:avl, -Key, -Value) is semidet.
+% Deletes and returns the first element on the tree.
+% Fails is the tree is empty.
 
 avl_delete_first(avl(K, V, L, R, _), T1, K1, V1) :-
         avl_delete_first(L, R, K, V, T1, K1, V1).
@@ -247,8 +246,17 @@ avl_delete_first(avl(LK, LV, LL, LR, _), R, K, V, T1, K1, V1) :-
             V1 = LV,
             T1 = avl(K, V, t, t, 1)).
 
+
+%% avl_delete_last(+Tree:avl, -Out:avl) is semidet.
+% Deletes the last element on the tree.
+% Fails is the tree is empty.
+
 avl_delete_last(T, T1) :-
         avl_delete_last(T, T1, _, _).
+
+%% avl_delete_last(+Tree:avl, -Out:avl, -Key, -Value) is semidet.
+% Deletes and returns the last element on the tree.
+% Fails is the tree is empty.
 
 avl_delete_last(avl(K, V, L, R, _), T1, K1, V1) :-
         avl_delete_last(R, L, K, V, T1, K1, V1).
@@ -266,10 +274,22 @@ avl_delete_last(avl(RK, RV, RL, RR, _), L, K, V, T1, K1, V1) :-
             V1 = RV,
             T1 = avl(K, V, t, t, 1)).
 
+%% avl_delete(+Tree:avl, +Key, -Out:avl) is semidet.
+% deletes the element with the given key from the tree.
+
 avl_delete(T, K, T1) :-
         avl_delete(T, K, T1, _).
 
-avl_delete(avl(NK, NV, L, R, _), K, T1, V1) :-
+%% avl_delete(+Tree:avl, +Key, -Out:avl, -Value) is semidet.
+% deletes the element with the given key from the tree and return the
+% value it had associated.
+
+avl_delete(T, K, T1, V) :-
+        (   ground(K)
+        ->  avl_delete_unsafe(T, K, T1, V)
+        ;   instantiation_error(K)).
+
+avl_delete_unsafe(avl(NK, NV, L, R, _), K, T1, V1) :-
         compare(O, K, NK),
         avl_delete(O, K, NK, NV, L, R, T1, V1).
 
@@ -304,8 +324,16 @@ avl_delete(>, K, NK, NV, L, R, T1, V1) :-
         ;   T1D is 1 + max(LD, LD - Diff),
             T1 = avl(NK, NV, L, R1, T1D)).
 
+%% avl_delete_list(+Tree:avl, +Keys:list, -Out:avl) is semidet.
+% delete from the tree all the elements with keys in Keys.
+
 avl_delete_list(T, L, T1) :-
         avl_delete_list1(L, T, T1, _).
+
+%% avl_delete_list(+Tree:avl, +Keys:list, -Out:avl, -Vals:list) is semidet.
+% delete from the tree all the elements with keys in Keys and returns
+% a list with the values of the deleted entries.
+
 avl_delete_list(T, L, T1, V1) :-
         avl_delete_list1(L, T, T1, V1).
 
@@ -314,25 +342,16 @@ avl_delete_list1([K|L], T, T1, [V|VL]) :-
         avl_delete(T, K, T2, V),
         avl_delete_list1(L, T2, T1, VL). 
 
+%% avl_has(+Tree:avl, +Key) is semidet.
+% Successes when the tree contains an entry with the given key.
 
-/**
-  @pred avl_has(+Tree, +Key)
-    checks whether the AVL tree contains an element with the given key.
- */
 avl_has(T, K) :-
 	avl_get(T, K, _).
 
-/**
-  @pred avl_get(+Tree, +Key, ?Value)
-    @arg Tree
-        input AVL tree
-    @arg Key
-        key for the element that wants to be retrieved
-    @arg Value
-        value found
 
-    @desc retrieves the value associated to some key. Predicate fails if no element with such key is found on the tree.
-  */
+%% avl_get(+Tree:avl, +Key, -Value) is semidet.
+% Retrieves the value associated to the given key.
+
 avl_get(t(NK, NV, L, R, _), K, V) :-
 	compare(O, K, NK),
 	avl_get(O, K, NV, L, R, V).
@@ -342,18 +361,17 @@ avl_get(<,K,_,L,_,V) :-
 avl_get(>,K,_,_,R,V) :-
 	avl_get(R, K, V).
 
-/**
-  @pred list_to_avl(+List, -Tree)
-    @arg List=[K1-V1, K2-V2,...]
-        input list to be converted to an AVL tree.
-    @arg Tree
-        output AVL tree.
 
-    @desc converts a list of @c|Key-Value| pairs to and AVL tree.
-          Internally, it uses @rp|avl_replace/4|, so if the list contains
-          several elements with the same key, the first ones are
-          effectively ignored.
-  */
+%% list_to_avl(+List:list, -Out:avl) is det.
+% Converts a list of Key-Value pairs to an AVL tree.
+%
+% If the list contains several pairs with the same key, the value
+% stored on the tree will be that of the last pair.
+%
+% This operation has complexity O(N*log N).
+%
+% @param List list of pairs [K1-V1, K2-V2, ...]
+
 list_to_avl(L, O) :-
 	list_to_avl(L, t, O).
 
@@ -361,6 +379,10 @@ list_to_avl([], O, O).
 list_to_avl([K-V|L], T, O) :-
 	avl_replace(T, K, V, T1),
 	list_to_avl(L, T1, O).
+
+%% keys_to_avl(L:list, -Out:avl) is det.
+% Creates a tree with the keys in the given list and all the values
+% [].
 
 keys_to_avl(L, O) :-
 	keys_to_avl(L, t, O).
@@ -370,58 +392,46 @@ keys_to_avl([K|L], T, O) :-
 	avl_replace(T, K, [], T1),
 	keys_to_avl(L, T1, O).
 
-/**
-  @pred sorted_list_to_avl(+List, -Tree)
-    @arg List=[K1-V1, K2-V2, ...]
-        input list to be converted to an AVL tree.
-        It has to be a sorted and elements keys have to be unique.
-    @arg Tree
-        output tree.
-  
-    @desc converts a sorted list of @c|Key-Value| pairs without key duplicates
-        to an AVL tree efficiently.
-  */
-sorted_list_to_avl(List, T) :-
+
+%% ordered_list_to_avl(List:list, -Out:avl) is det.
+% Creates a tree with the elements in the given list. The list must be
+% sorted by key and all the keys must be unique.
+%
+% This operation has complexity O(N).
+
+ordered_list_to_avl(List, T) :-
 	length(List, E),
-	sorted_list_to_avl(E, List, [], _, T1),
+	ordered_list_to_avl(E, List, [], _, T1),
 	T=T1.
 
-sorted_list_to_avl(0, List, Rest, 0, t) :-
+ordered_list_to_avl(0, List, Rest, 0, t) :-
 	!,
 	List=Rest.
-sorted_list_to_avl(1, List, Rest, 1, avl(K, V, t, t, 1)) :-
+ordered_list_to_avl(1, List, Rest, 1, avl(K, V, t, t, 1)) :-
 	!,
 	List=[K-V|Rest].
-sorted_list_to_avl(N, List, Rest, D, avl(K, V, L, R, D)) :-
+ordered_list_to_avl(N, List, Rest, D, avl(K, V, L, R, D)) :-
 	A is N//2,
-	sorted_list_to_avl(A, List, [K-V|More], D1, L),
+	ordered_list_to_avl(A, List, [K-V|More], D1, L),
 	D is D1+1,
 	Z is N-1-A,
-	sorted_list_to_avl(Z, More, Rest, _, R).
+	ordered_list_to_avl(Z, More, Rest, _, R).
 
-
-
-/**
-  @pred avl_gen(+Tree, ?Key, ?Value)
-    @arg Tree
-        input AVL tree.
-    @arg Key, Value
-        pair on the tree.
   
-    @desc enumerates via backtracking the elements on the AVL tree.
-  */
+%% avl_gen(+Tree:avl, -K, -V) is nondet.
+% enumerates the elements on the tree via backtracking.
+
 avl_gen(t(_,_,L,_,_), K, V) :-
 	avl_gen(L, K, V).
 avl_gen(t(K,V,_,_,_), K, V).
 avl_gen(t(_,_,_,R,_), K, V) :-
 	avl_gen(R, K, V).
 
-/**
-  @pred avl_dump(+Tree)
-    prints an human friendly representation of the tree to the current stream.
-
-    TODO: use @l|portray/1| instead.
-  */
+  
+%% avl_dump(+Tree) is det.
+% prints an human friendly representation of the tree to the current stream.
+%
+% @tbd use portray/1 instead.
 
 avl_dump(T) :-
 	avl_dump(T, '').
@@ -433,6 +443,15 @@ avl_dump(avl(K, V, L, R, D), S) :-
 	avl_dump(L, SL),
 	atom_concat(S, '    ', SR),
 	avl_dump(R, SR).
+
+
+%% avl_merge(+Tree1:avl, +Tree2:avl, -Out) is det.
+% Merges two AVL trees into one.
+%
+% When entries with the same key exist on both trees the one from the
+% second one is picked.
+%
+% This operation has complexity O(N1+N2).
 
 avl_merge(T1, T2, TO) :-
         avl_to_list(T1, L1),
@@ -464,23 +483,34 @@ merge_sorted_lists1(L1, L2, LO) :-
                 ;   merge_sorted_lists1(L1, T2, LO1))
             ;   merge_sorted_lists(T1, T2, LO1))).
 
-avl_merge_list(T, L, T1) :-
-        avl_merge_list1(L, T, T1).
 
-avl_merge_list1([], T, T).
-avl_merge_list1([K-V|L], T, T1) :-
-        avl_replace(T, K, V, T2),
-        avl_merge_list1(L, T2, T1).
+%% avl_small_merge(+Tree1:avl, +Tree2:avl, -Out:avl) is det.
+% Merges two AVL trees into one.
+%
+% This operation has complexity O(N2*log(N1+N2)).
 
 avl_small_merge(T1, T2, TO) :-
         avl_to_list(T2, L),
-        avl_merge_list1(L, T1, TO).
+        avl_replace_list1(L, T1, TO).
 
+%% avl_iterator(+Tree:avl, -Iterator:avl_iterator) is det.
+% Creates an iterator for the given tree.
 
 avl_iterator(T, avli(T, [])).
 
+%% avl_iterator_advance(+Iterator:avl_iterator, -Out:avl_iterator, -Key) is semidet.
+% Advances and returns the key from the next element from the tree
+% iterator.
+%
+% Fails when the iterator surpasses the end of the tree.
+
 avl_iterator_advance(I, I1, K) :-
         avl_iterator_advance(I, I1, K, _).
+
+%% avl_iterator_advance(+Iterator:avl_iterator, -Out:avl_iterator, -Key, -Value) is semidet.
+% Advances and returns the next element from the tree iterator.
+%
+% Fails when the iterator surpasses the end of the tree.
 
 avl_iterator_advance(avli(T, W), avli(T1, W1), K, V) :-
         avl_iterator_advance(T, W, T1, W1, K, V).
@@ -490,11 +520,25 @@ avl_iterator_advance(T, W, T1, W1, K, V) :-
         ->  avl_iterator_advance(L, [T|W], T1, W1, K, V)
         ;   W = [avl(K, V, _, T1, _)|W1]).
 
-avl_map(t, Op).
+%% avl_map(+Tree:avl, +Op) is semidet.
+% Calls Op/2 on all the elements of the tree as Op(K, V).
+%
+% Fails if any of the calls fail.
+
+:- meta_predicate avl_map(+, 2).
+:- meta_predicate avl_map(+, 3, -).
+
+avl_map(t, _).
 avl_map(avl(K, V, L, R, _), Op) :-
         avl_map(L, Op),
         call(Op, K, V),
         avl_map(R, Op).
+
+%% avl_map(+Tree:avl, +Op, -Out:avl) is semidet.
+% Calls Op/3 on all the elements of the tree as Op(K, V, V1) and returs
+% a new tree with the K-V1 mapping.
+%
+% Fails if any of the calls to Op fail.
 
 avl_map(t, _, t).
 avl_map(avl(K, V, L, R, D), Op, avl(K, V1, L1, R1, D)) :-
