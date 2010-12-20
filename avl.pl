@@ -289,7 +289,7 @@ avl_delete(<, K, NK, NV, L, R, T1, V1) :-
         avl_cmp_depth(L1, RD, Diff),
         (   Diff = 2
         ->  avl_balance_right(NK, NV, L1, R, T1)
-        ;   T1D is max(RD, RD - Diff),
+        ;   T1D is 1 + max(RD, RD - Diff),
             T1 = t(NK, NV, L1, R, T1D)).
 
 avl_delete(>, K, NK, NV, L, R, T1, V1) :-
@@ -298,7 +298,7 @@ avl_delete(>, K, NK, NV, L, R, T1, V1) :-
         avl_cmp_depth(R1, LD, Diff),
         (   Diff = 2
         ->  avl_balance_left(NK, NV, L, R1, T1)
-        ;   T1D is max(LD, LD - Diff),
+        ;   T1D is 1 + max(LD, LD - Diff),
             T1 = t(NK, NV, L, R1, T1D)).
 
 avl_delete_list(T, L, T1) :-
