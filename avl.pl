@@ -51,6 +51,7 @@
                  avl_merge/3,
                  avl_small_merge/3,
                  avl_gen/3,
+                 avl_break/5,
                  avl_dump/1]).
   
 %%  avl_empty(-Tree:avl) is det.
@@ -284,12 +285,7 @@ avl_delete(T, K, T1) :-
 % deletes the element with the given key from the tree and return the
 % value it had associated.
 
-avl_delete(T, K, T1, V) :-
-        (   ground(K)
-        ->  avl_delete_unsafe(T, K, T1, V)
-        ;   instantiation_error(K)).
-
-avl_delete_unsafe(avl(NK, NV, L, R, _), K, T1, V1) :-
+avl_delete(avl(NK, NV, L, R, _), K, T1, V1) :-
         compare(O, K, NK),
         avl_delete(O, K, NK, NV, L, R, T1, V1).
 
@@ -519,6 +515,14 @@ avl_iterator_advance(T, W, T1, W1, K, V) :-
         (   T =  avl(_, _, L, _, _)
         ->  avl_iterator_advance(L, [T|W], T1, W1, K, V)
         ;   W = [avl(K, V, _, T1, _)|W1]).
+
+
+%% avl_break(+Tree:avl, -Key, -Value, -Left:avl, -Right:avl) is semidet
+% Inspects AVL tree internals returning the Key/Value pair at the root
+% element and the left and right subtrees.
+
+avl_break(avl(K, V, L, R, _), K, V, L, R).
+
 
 %% avl_map(+Tree:avl, +Op) is semidet.
 % Calls Op/2 on all the elements of the tree as Op(K, V).
