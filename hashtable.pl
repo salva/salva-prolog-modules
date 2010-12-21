@@ -56,7 +56,6 @@
 /** ht_new(-HT:ht) is det.
 
   Creates a new hastable.
-
 */
 ht_new(HT) :-
         ht_new(HT, 16).
@@ -73,7 +72,6 @@ ht_new(HT, Max) :-
 /** ht_empty(+HT:ht) is det.
 
   Test if the hash is empty
-  
 */
 ht_empty(ht(_, 0, _)).
 
@@ -87,7 +85,6 @@ ht_size(ht(_, Size, _), Size).
 
    Preallocates space for More more elements in the hashtable.
 */
-
 ht_reserve(HT, More) :-
         HT = ht(Buckets, Size, Max),
 	(   Max < Size + More
@@ -129,7 +126,6 @@ fast_put(Buckets, K, V) :-
   Builds a list containing the Key-Value pairs from the hashtable.
 
   List is of the form [Key1-Value1, Key2-Value2, ...]
-
 */
 ht_to_list(ht(Buckets, _, _), L) :-
         to_list(1, Buckets, L).
@@ -149,13 +145,10 @@ append_to_list([K-V|T], [K-V|M], Tail) :-
                                 % generated list.
         append_to_list(T, M, Tail).
 
-
 /** ht_keys(!HT:ht, -Keys:list) is det.
 
   Returns a list with the keys on the hash.
-
 */
-
 ht_keys(ht(B, _, _), L) :-
         keys(1, B, L).
 
@@ -170,14 +163,12 @@ append_keys([], L, L).
 append_keys([K-_|T], [K|T1], T2) :-
         append_keys(T, T1, T2).
 
-ht_values(ht(B, _, _), L) :-
-        values(1, B, L).
-
-/** ht_keys(!HT:ht, -Keys:list) is det.
+/** ht_values(!HT:ht, -Keys:list) is det.
 
   Returns a list with the values on the hash.
-
 */
+ht_values(ht(B, _, _), L) :-
+        values(1, B, L).
 
 values(N, B, L) :-
         (   arg(N, B, E)
@@ -194,7 +185,6 @@ append_values([_-V|T], [V|T1], T2) :-
   
   Builds a new hashtable from the given list.
 */
-  
 list_to_ht(List, HT) :-
         ht_new(HT),
         ht_replace_list(HT, List).
@@ -266,7 +256,6 @@ put_keys([K|T], HT, V, Replace) :-
   Inserts the keys from List into the hastable using [] as the
   value. Overwrites any previous colliding entries.
 */
-
 ht_replace_keys(HT, List) :-
         ht_replace_keys(HT, List, []).
 
@@ -275,7 +264,6 @@ ht_replace_keys(HT, List) :-
   Inserts the keys from List into the hastable with the given
   value. Overwrites any previously existent colliding entries.
 */
-
 ht_replace_keys(HT, List, Value) :-
         length(List, Len),
         ht_reserve(HT, Len),
@@ -345,7 +333,6 @@ ht_replace(HT, K, V) :-
 
   Deletes the entry for the given key from the hash.
 */
-
 ht_delete(HT, K) :-
         ht_delete(HT, K, _).
 
@@ -354,7 +341,6 @@ ht_delete(HT, K) :-
   Deletes the entry for the given key from the hash and returns the
   value that it had.
 */
-
 ht_delete(HT, K, V) :-
         HT = ht(Buckets, Size, _),
         bucket_index(Buckets, K, Index),
@@ -374,7 +360,6 @@ delete_entry([H|T], K, New, V) :-
 
   Retrieves the value associated to the given key
 */
-
 ht_get(ht(Buckets, _, _), K, V) :-
         bucket_index(Buckets, K, Index),
         arg(Index, Buckets, Entries),
@@ -436,9 +421,7 @@ stats(N, B, LL0, LL1, Emp0, Emp1) :-
 /** ht_map(+HT:ht, +Op) is semidet.
 
 Calls Op(K, V) for all the elements on the hash.
-
 */
-
 ht_map(ht(B, _, _), Op) :-
         map_args(1, B, Op).
 
@@ -459,9 +442,7 @@ map_arg_entries([K-V|T], Op) :-
 
 Calls Op(K, V, V1) for all the elements on the hash returning a new
 hash with the values gnerated.
-
 */
-
 ht_map(ht(B, Size, Max), Op, Out) :-
         must_be(var, Out),
         Out = ht(B1, Size, Max),
