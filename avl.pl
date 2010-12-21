@@ -52,6 +52,8 @@
                  avl_small_merge/3,
                  avl_gen/3,
                  avl_break/5,
+                 avl_map/2,
+                 avl_map/3,
                  avl_dump/1]).
   
 %%  avl_empty(-Tree:avl) is det.
