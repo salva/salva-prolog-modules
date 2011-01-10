@@ -224,14 +224,14 @@ avl_balance_right(NK, NV, L, avl(RK, RV, RL, RR, RD), T) :-
 
 %% avl_delete_first(+Tree:avl, -Out:avl) is semidet.
 % Deletes the first element on the tree.
-% Fails is the tree is empty.
+% Fails if the tree is empty.
 
 avl_delete_first(T, T1) :-
         avl_delete_firsy(T, T1, _, _).
 
 %% avl_delete_first(+Tree:avl, -Out:avl, -Key, -Value) is semidet.
 % Deletes and returns the first element on the tree.
-% Fails is the tree is empty.
+% Fails if the tree is empty.
 
 avl_delete_first(avl(K, V, L, R, _), T1, K1, V1) :-
         avl_delete_first(L, R, K, V, T1, K1, V1).
@@ -252,14 +252,14 @@ avl_delete_first(avl(LK, LV, LL, LR, _), R, K, V, T1, K1, V1) :-
 
 %% avl_delete_last(+Tree:avl, -Out:avl) is semidet.
 % Deletes the last element on the tree.
-% Fails is the tree is empty.
+% Fails if the tree is empty.
 
 avl_delete_last(T, T1) :-
         avl_delete_last(T, T1, _, _).
 
 %% avl_delete_last(+Tree:avl, -Out:avl, -Key, -Value) is semidet.
 % Deletes and returns the last element on the tree.
-% Fails is the tree is empty.
+% Fails if the tree is empty.
 
 avl_delete_last(avl(K, V, L, R, _), T1, K1, V1) :-
         avl_delete_last(R, L, K, V, T1, K1, V1).
