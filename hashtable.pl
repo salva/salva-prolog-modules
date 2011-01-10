@@ -35,8 +35,10 @@
             ht_replace/3,
             ht_delete/2,
             ht_delete/3,
+            ht_append/3,
             ht_put_list/2,
             ht_replace_list/2,
+            ht_append_list/2,
             ht_put_keys/2,
             ht_put_keys/3,
             ht_replace_keys/2,
@@ -312,6 +314,41 @@ ht_put(HT, K) :-
 ht_put(HT, K, V) :-
         ht_reserve(HT, 1),
         put(HT, K, V, fail).
+
+
+/** ht_append(!HT:ht, +Key, +Value) is det.
+
+   Equivalent to
+   
+   (    ht_get(HT, K, L1)
+   ->   ht_replace(HT, K, [V|L1])
+   ;    ht_put(HT, K, [V]))
+*/
+
+ht_append(HT, K, V) :-
+        HT = ht(Buckets, Size, _),
+        bucket_index(Buckets, K, Index),
+        arg(Index, Buckets, Old),
+        (   entry_lookup(Old, K, Entry),
+            Entry = _-OldV
+        ->  setarg(2, Entry, [V|OldV])
+        ;   setarg(Index, Buckets, [K-[V]|Old]),
+            succ(Size, Size1),
+            setarg(2, HT, Size1)).
+
+/** ht_append_list(!HT:ht, +List) is det.
+
+Calls ht_append for all the entries on the given list.
+  
+*/
+
+ht_append_list(HT, L) :-
+        append_list(L, HT).
+
+append_list([], _).
+append_list([K-V|T], HT) :-
+        ht_append(HT, K, V),
+        append_list(T, HT).
 
 /** ht_replace(!HT:ht, +Key) is det.
 
