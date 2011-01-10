@@ -20,7 +20,7 @@
 
   @author Salvador Fandiño
   @license GPL
-
+  
 */
 
 :- module(hashtable,
@@ -50,6 +50,8 @@
             keys_to_ht/3,
 	    ht_stats/1,
             ht_gen/3,
+            ht_iterator/2,
+            ht_iterator_advance/4,
             ht_map/2,
             ht_map/3]).
 
@@ -462,3 +464,25 @@ map_arg_entries([], _, []).
 map_arg_entries([K-V|T], Op, [K-V1|T1]) :-
         call(Op, K, V, V1),
         map_arg_entries(T, Op, T1).
+
+/** ht_iterator(+HT:ht, -Iterator:ht_iterator) is det.
+
+  Returns an opaque object that can be use to iterate over the hash.
+
+  Destructive changes to the hash while being accessed through the iterator are not supported.
+*/
+ht_iterator(ht(B, _, _), hti([], 0, B)).
+
+/** ht_iterator_advance(+Iterator:ht_iterator, -NewIterator:ht_iterator, -Key, -Value) is semidet.
+
+  returns the next pair Key-Value from the hash referenced by the iterator.
+*/
+
+ht_iterator_advance(hti(E, N, B), hti(E1, N1, B), K, V) :-
+        iterator_advance(E, N, B, E1, N1, K, V).
+
+iterator_advance([], N, B, E1, N1, K, V) :-
+        succ(N, N2),
+        arg(N2, B, E),
+        iterator_advance(E, N2, B, E1, N1, K, V).
+iterator_advance([K-V|T], N, _, T, N, K, V).
