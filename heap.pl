@@ -6,7 +6,8 @@
                   heap_peek/2,
                   heap_pop/4,
                   heap_pop/3,
-                  heap_merge/3 ]).
+                  heap_merge/3,
+                  heap_to_list/2]).
 
 heap_empty(h).
 
@@ -45,3 +46,20 @@ heap_pop(h(E, P, L, R, _), E, P, O) :-
         heap_merge(L, R, O).
 heap_pop(h(E, _, L, R, _), E, O) :-
         heap_merge(L, R, O).
+
+heap_to_list(h, []).
+heap_to_list(h(E, P, L, R, _), [E/P|T]) :-
+        heap_to_list(L, LL),
+        heap_to_list(R, RL),
+        merge(LL, RL, T).
+
+merge(A, B, L) :-
+        (   A = [AE/AP|AT]
+        ->  (   B = [BE/BP|BT]
+            ->  (   AP <= BP
+                ->  L = [AE/AP | T],
+                    merge(AT, B, T)
+                ;   L = [BE/BP | T],
+                    merge(A, BT, T) )
+            ;   L = A )
+        ;   L = B ).
